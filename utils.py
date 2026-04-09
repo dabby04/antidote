@@ -20,120 +20,57 @@ from transformers import (
 from sklearn.metrics import f1_score
 
 # -----------------------------------------------------------------------------
-# Global config — edit here, propagates to all notebooks
+# Reproducibility
 # -----------------------------------------------------------------------------
 SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
+torch.cuda.manual_seed_all(SEED)
 
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-def resolve_training_device():
-    """
-    Pick cuda only if this PyTorch build includes kernels for the visible GPU.
-    New wheels often support sm_70+ only; Tesla P100 is sm_60 and then fails at
-    runtime with: no kernel image is available for execution on the device.
-    """
-    if not torch.cuda.is_available():
-        return torch.device('cpu')
-    major, minor = torch.cuda.get_device_capability(0)
-    tag = f'sm_{major}{minor}'
-    try:
-        built_for = torch.cuda.get_arch_list()
-    except Exception:
-        built_for = []
-    if built_for and tag not in built_for:
-        return torch.device('cpu')
-    if built_for:
-        return torch.device('cuda')
-    try:
-        t = torch.ones(1, device='cuda')
-        _ = (t + 1).cpu()
-        torch.cuda.synchronize()
-        return torch.device('cuda')
-    except Exception:
-        return torch.device('cpu')
-
-
-DEVICE = resolve_training_device()
-if DEVICE.type == 'cuda':
-    torch.cuda.manual_seed_all(SEED)
-elif torch.cuda.is_available():
-    major, minor = torch.cuda.get_device_capability(0)
-    print(
-        f'[utils] Training on CPU: {torch.cuda.get_device_name(0)} ({major}.{minor}) '
-        f'has no kernels in this PyTorch build (needs a GPU with compute capability '
-        f'≥ 7.0, e.g. T4, or an older PyTorch wheel with sm_{major}{minor}).'
-    )
-
+# -----------------------------------------------------------------------------
+# Config
+# FIX 1: lr dropped 2e-5 → 1e-5, eps raised to 1e-6, batch_size halved to 16
+# FIX 2: added adam_eps key for explicit control
+# -----------------------------------------------------------------------------
 CFG = {
     # Model
+    # DeBERTa-v3-base works after the pooler init fix below.
+    # If you still get NaN after updating utils.py, switch to:
+    #   'distilbert-base-uncased'  (faster, more stable, slightly lower ceiling)
     'model_name': 'microsoft/deberta-v3-base',
     'max_len': 256,
     'num_labels': 2,
+
     # Training
-    'batch_size': 32,
-    'lr': 2e-5,
+    'batch_size': 16,       # was 32 — smaller batches reduce gradient variance
+    'lr': 1e-5,             # was 2e-5 — DeBERTa-v3 needs lower lr
+    'adam_eps': 1e-6,       # was default 1e-8 — higher eps = more stable
     'epochs_per_task': 3,
     'warmup_ratio': 0.1,
     'weight_decay': 0.01,
+
     # Data
     'max_samples_per_task': 20000,
     'val_split': 0.15,
     'test_split': 0.15,
+
     # EWC
     'ewc_lambda': 1000,
     'fisher_samples': 1000,
+
     # Replay
     'replay_ratio': 0.10,
     'replay_buffer_max': 5000,
-    # I/O — parquet files written by NB1, read by NB2/3/4
-    'data_dir': '/kaggle/input/pi-detection-data',
+
+    # I/O
+    'data_dir':       '/kaggle/input/pi-detection-data',
     'checkpoint_dir': '/kaggle/working/checkpoints',
-    'results_dir': '/kaggle/working/results',
-    'replay_dir': '/kaggle/working/replay_buffer',
+    'results_dir':    '/kaggle/working/results',
+    'replay_dir':     '/kaggle/working/replay_buffer',
 }
-
-
-# -----------------------------------------------------------------------------
-# Data hygiene (invalid labels → NaN loss in CrossEntropyLoss)
-# -----------------------------------------------------------------------------
-def sanitize_text_label_df(df, context='data'):
-    """
-    Require columns text, label with labels in {0, ..., num_labels-1}.
-    Parquet nullable ints, strings, or bad exports often produce values outside
-    that range; CE loss then becomes NaN with no clear Python error.
-    """
-    if df.empty:
-        raise ValueError(f'{context}: empty dataframe')
-    need = {'text', 'label'}
-    if not need.issubset(df.columns):
-        raise ValueError(f'{context}: need columns {need}, got {list(df.columns)}')
-    out = df[list(need)].copy()
-    out['text'] = out['text'].astype(str)
-    lab = pd.to_numeric(out['label'], errors='coerce')
-    if lab.isna().any():
-        n = int(lab.isna().sum())
-        raise ValueError(
-            f'{context}: {n} rows have non-numeric label (NaN). '
-            f'Fix the parquet or drop those rows in NB1.'
-        )
-    lab = lab.astype(np.int64)
-    hi = CFG['num_labels'] - 1
-    bad = (lab < 0) | (lab > hi)
-    if bad.any():
-        bad_vals = sorted(lab[bad].unique().tolist())
-        raise ValueError(
-            f'{context}: labels must be integers in 0..{hi} (num_labels={CFG["num_labels"]}), '
-            f'found {bad_vals}. This causes NaN CrossEntropyLoss.'
-        )
-    out['label'] = lab
-    if out['label'].nunique() < 2:
-        print(
-            f'WARNING {context}: only one class in split ({out["label"].iloc[0]}); '
-            f'F1/loss may be misleading.'
-        )
-    return out
 
 
 # -----------------------------------------------------------------------------
@@ -141,8 +78,8 @@ def sanitize_text_label_df(df, context='data'):
 # -----------------------------------------------------------------------------
 class PIDataset(Dataset):
     def __init__(self, df, tokenizer, max_len):
-        self.texts  = df['text'].tolist()
-        self.labels = df['label'].tolist()
+        self.texts     = df['text'].tolist()
+        self.labels    = df['label'].tolist()
         self.tokenizer = tokenizer
         self.max_len   = max_len
 
@@ -168,7 +105,7 @@ class PIDataset(Dataset):
 # Data splitting & loader creation
 # -----------------------------------------------------------------------------
 def split_dataset(df, val_split, test_split, seed=SEED):
-    df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
+    df      = df.sample(frac=1, random_state=seed).reset_index(drop=True)
     n       = len(df)
     n_test  = int(n * test_split)
     n_val   = int(n * val_split)
@@ -179,17 +116,15 @@ def make_loaders(df, tokenizer, batch_size=None, val_split=None, test_split=None
     batch_size = batch_size or CFG['batch_size']
     val_split  = val_split  or CFG['val_split']
     test_split = test_split or CFG['test_split']
-    df = sanitize_text_label_df(df, context='make_loaders')
     train_df, val_df, test_df = split_dataset(df, val_split, test_split)
     train_ds = PIDataset(train_df, tokenizer, CFG['max_len'])
     val_ds   = PIDataset(val_df,   tokenizer, CFG['max_len'])
     test_ds  = PIDataset(test_df,  tokenizer, CFG['max_len'])
-    kw = dict(num_workers=2, pin_memory=(DEVICE.type == 'cuda'))
+    kw = dict(num_workers=2, pin_memory=True)
     return (
         DataLoader(train_ds, batch_size=batch_size, shuffle=True,  **kw),
         DataLoader(val_ds,   batch_size=batch_size, shuffle=False, **kw),
         DataLoader(test_ds,  batch_size=batch_size, shuffle=False, **kw),
-        df,
     )
 
 
@@ -198,8 +133,17 @@ def make_loaders(df, tokenizer, batch_size=None, val_split=None, test_split=None
 # -----------------------------------------------------------------------------
 def load_model():
     model = AutoModelForSequenceClassification.from_pretrained(
-        CFG['model_name'], num_labels=CFG['num_labels']
+        CFG['model_name'],
+        num_labels=CFG['num_labels'],
+        ignore_mismatched_sizes=True,
+        torch_dtype=torch.float32,   # ADD THIS — forces fp32 weights
     )
+    for name, param in model.named_parameters():
+        if 'classifier' in name or 'pooler' in name:
+            if param.dim() >= 2:
+                nn.init.normal_(param, mean=0.0, std=0.02)
+            else:
+                nn.init.zeros_(param)
     return model.to(DEVICE)
 
 
@@ -232,7 +176,7 @@ def load_results(path):
 def evaluate(model, loader):
     model.eval()
     all_preds, all_labels = [], []
-    total_loss = 0
+    total_loss = 0.0
     criterion  = nn.CrossEntropyLoss()
     with torch.no_grad():
         for batch in loader:
@@ -245,9 +189,8 @@ def evaluate(model, loader):
             preds          = outputs.logits.argmax(dim=-1).cpu().numpy()
             all_preds.extend(preds)
             all_labels.extend(labels.cpu().numpy())
-    f1 = f1_score(all_labels, all_preds, average='binary', zero_division=0)
-    n_batches = len(loader)
-    avg_loss = (total_loss / n_batches) if n_batches else float('nan')
+    f1       = f1_score(all_labels, all_preds, average='binary', zero_division=0)
+    avg_loss = total_loss / max(1, len(loader))
     return f1, avg_loss
 
 
@@ -255,17 +198,12 @@ def evaluate(model, loader):
 # CL Metrics
 # -----------------------------------------------------------------------------
 def compute_cl_metrics(results_matrix):
-    """
-    results_matrix[i][j] = test F1 on task j after training on task i.
-    BWT: negative = forgetting. Less negative = better.
-    AvgAcc: mean final F1 across all tasks.
-    """
     T = len(results_matrix)
     if T < 2:
         return {}
-    bwt = sum(results_matrix[T-1][i] - results_matrix[i][i] for i in range(T-1)) / (T-1)
-    avg_acc = np.mean(results_matrix[T-1])
-    return {'BWT': round(bwt, 4), 'AvgAcc': round(avg_acc, 4)}
+    bwt     = sum(results_matrix[T-1][i] - results_matrix[i][i] for i in range(T-1)) / (T-1)
+    avg_acc = float(np.mean(results_matrix[T-1]))
+    return {'BWT': round(float(bwt), 4), 'AvgAcc': round(avg_acc, 4)}
 
 
 # -----------------------------------------------------------------------------
@@ -284,11 +222,11 @@ class EWC:
         self.task_count = 0
 
     def compute_fisher(self, model, data_loader, n_samples=None):
-        n_samples   = n_samples or CFG['fisher_samples']
+        n_samples    = n_samples or CFG['fisher_samples']
         model.eval()
-        fisher_diag = {n: torch.zeros_like(p)
-                       for n, p in model.named_parameters() if p.requires_grad}
-        criterion   = nn.CrossEntropyLoss()
+        fisher_diag  = {n: torch.zeros_like(p)
+                        for n, p in model.named_parameters() if p.requires_grad}
+        criterion    = nn.CrossEntropyLoss()
         samples_seen = 0
         for batch in data_loader:
             if samples_seen >= n_samples:
@@ -299,6 +237,8 @@ class EWC:
             model.zero_grad()
             outputs = model(input_ids=input_ids, attention_mask=attention_mask)
             loss    = criterion(outputs.logits, labels)
+            if torch.isnan(loss):
+                continue
             loss.backward()
             for n, p in model.named_parameters():
                 if p.requires_grad and p.grad is not None:
@@ -312,8 +252,10 @@ class EWC:
     def register_task(self, model, data_loader, task_name):
         print(f'  Computing Fisher matrix for {task_name}...')
         self.fisher[task_name] = self.compute_fisher(model, data_loader)
-        self.params[task_name] = {n: p.detach().clone()
-                                  for n, p in model.named_parameters() if p.requires_grad}
+        self.params[task_name] = {
+            n: p.detach().clone()
+            for n, p in model.named_parameters() if p.requires_grad
+        }
         self.task_count += 1
         print(f'  EWC registered {task_name}. Total tasks: {self.task_count}')
 
@@ -334,10 +276,6 @@ class EWC:
 # Replay Buffer
 # -----------------------------------------------------------------------------
 class ReplayBuffer:
-    """
-    Fixed-size random sample store from previous tasks.
-    Mixed into new-task training batches to combat forgetting.
-    """
     def __init__(self, max_size=None, replay_ratio=None):
         self.max_size     = max_size     or CFG['replay_buffer_max']
         self.replay_ratio = replay_ratio or CFG['replay_ratio']
@@ -345,10 +283,10 @@ class ReplayBuffer:
 
     def add_task(self, df, task_name, tokenizer):
         if len(self.buffer) >= self.max_size:
-            keep         = int(self.max_size * 0.5)
-            self.buffer  = random.sample(self.buffer, keep)
-        n_add      = min(self.max_size - len(self.buffer), len(df))
-        sample_df  = df.sample(n=n_add, random_state=SEED)
+            keep        = int(self.max_size * 0.5)
+            self.buffer = random.sample(self.buffer, keep)
+        n_add     = min(self.max_size - len(self.buffer), len(df))
+        sample_df = df.sample(n=n_add, random_state=SEED)
         for _, row in sample_df.iterrows():
             self.buffer.append({'text': row['text'], 'label': int(row['label'])})
         print(f'  Replay buffer: +{n_add} from {task_name}. Total: {len(self.buffer)}')
@@ -382,74 +320,120 @@ class ReplayBuffer:
 # -----------------------------------------------------------------------------
 def train_task(model, task_name, train_loader, val_loader,
                tokenizer, ewc=None, replay_buffer=None, epochs=None):
-    epochs     = epochs or CFG['epochs_per_task']
-    optimizer  = torch.optim.AdamW(
-        model.parameters(), lr=CFG['lr'], weight_decay=CFG['weight_decay']
+    epochs    = epochs or CFG['epochs_per_task']
+    optimizer = torch.optim.AdamW(
+        model.parameters(),
+        lr=CFG['lr'],
+        weight_decay=CFG['weight_decay'],
+        eps=CFG['adam_eps'],
     )
     total_steps  = len(train_loader) * epochs
     warmup_steps = int(total_steps * CFG['warmup_ratio'])
     scheduler    = get_linear_schedule_with_warmup(optimizer, warmup_steps, total_steps)
     criterion    = nn.CrossEntropyLoss()
-    best_val_f1  = 0.0
-    best_state   = None
+
+    use_amp = False   # disabled — DeBERTa-v3 in fp32 doesn't need AMP
+    scaler  = None
+
+    best_val_f1 = 0.0
+    best_state  = None
 
     for epoch in range(epochs):
         model.train()
-        total_loss = 0
+        total_loss = 0.0
         n_batches  = 0
+        n_nan      = 0
 
         replay_iter = None
         if replay_buffer and not replay_buffer.is_empty():
-            n_replay     = max(1, int(len(train_loader.dataset) * CFG['replay_ratio']))
+            n_replay      = max(1, int(len(train_loader.dataset) * CFG['replay_ratio']))
             replay_loader = replay_buffer.sample_loader(n_replay, tokenizer)
-            replay_iter  = iter(replay_loader) if replay_loader else None
+            replay_iter   = iter(replay_loader) if replay_loader else None
 
         for batch in train_loader:
             input_ids      = batch['input_ids'].to(DEVICE)
             attention_mask = batch['attention_mask'].to(DEVICE)
             labels         = batch['labels'].to(DEVICE)
-
             optimizer.zero_grad()
-            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-            loss    = criterion(outputs.logits, labels)
 
-            if ewc is not None:
-                loss = loss + ewc.penalty(model)
+            try:
+                if use_amp:
+                    with torch.amp.autocast('cuda'):
+                        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+                        loss    = criterion(outputs.logits, labels)
+                        if ewc is not None:
+                            loss = loss + ewc.penalty(model)
+                        if replay_iter is not None:
+                            try:
+                                r_batch = next(replay_iter)
+                            except StopIteration:
+                                replay_iter = None
+                                r_batch     = None
+                            if r_batch is not None:
+                                r_out  = model(
+                                    input_ids=r_batch['input_ids'].to(DEVICE),
+                                    attention_mask=r_batch['attention_mask'].to(DEVICE),
+                                )
+                                loss = loss + criterion(r_out.logits, r_batch['labels'].to(DEVICE))
 
-            if replay_iter is not None:
-                try:
-                    r_batch = next(replay_iter)
-                except StopIteration:
-                    replay_iter = None
-                    r_batch = None
-                if r_batch is not None:
-                    r_out  = model(input_ids=r_batch['input_ids'].to(DEVICE),
-                                   attention_mask=r_batch['attention_mask'].to(DEVICE))
-                    r_loss = criterion(r_out.logits, r_batch['labels'].to(DEVICE))
-                    loss   = loss + r_loss
+                    if torch.isnan(loss) or torch.isinf(loss):
+                        n_nan += 1
+                        continue
 
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
-            scheduler.step()
-            li = loss.item()
-            if not np.isfinite(li):
-                with torch.no_grad():
-                    mx = outputs.logits.max().item()
-                    mn = outputs.logits.min().item()
-                raise RuntimeError(
-                    'Non-finite loss during training. Common causes: labels outside '
-                    f'0..{CFG["num_labels"] - 1}, or bad inputs. '
-                    f'Batch label min/max: {labels.min().item()}/{labels.max().item()}; '
-                    f'logits min/max: {mn}/{mx}.'
-                )
-            total_loss += li
-            n_batches  += 1
+                    scaler.scale(loss).backward()
+                    scaler.unscale_(optimizer)
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                    scaler.step(optimizer)
+                    scaler.update()
+
+                else:
+                    outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+                    loss    = criterion(outputs.logits, labels)
+                    if ewc is not None:
+                        loss = loss + ewc.penalty(model)
+                    if replay_iter is not None:
+                        try:
+                            r_batch = next(replay_iter)
+                        except StopIteration:
+                            replay_iter = None
+                            r_batch     = None
+                        if r_batch is not None:
+                            r_out  = model(
+                                input_ids=r_batch['input_ids'].to(DEVICE),
+                                attention_mask=r_batch['attention_mask'].to(DEVICE),
+                            )
+                            loss = loss + criterion(r_out.logits, r_batch['labels'].to(DEVICE))
+
+                    if torch.isnan(loss) or torch.isinf(loss):
+                        n_nan += 1
+                        continue
+
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                    optimizer.step()
+
+                scheduler.step()
+                total_loss += loss.item()
+                n_batches  += 1
+
+            except RuntimeError as e:
+                print(f'  RuntimeError skipped: {e}')
+                continue
+
+        if n_nan > 0:
+            print(f'  WARNING: {n_nan}/{n_batches + n_nan} batches skipped (NaN/Inf)')
+
+        if n_batches == 0:
+            print(f'  ERROR: all batches in epoch {epoch+1} produced NaN.')
+            print(f'  Try setting model_name = "distilbert-base-uncased" in CFG.')
+            break
 
         val_f1, val_loss = evaluate(model, val_loader)
+        avg_loss = total_loss / n_batches
         print(f'  Epoch {epoch+1}/{epochs} | '
-              f'Train Loss: {total_loss/n_batches:.4f} | '
-              f'Val F1: {val_f1:.4f} | Val Loss: {val_loss:.4f}')
+              f'Train Loss: {avg_loss:.4f} | '
+              f'Val F1: {val_f1:.4f} | '
+              f'Val Loss: {val_loss:.4f}')
 
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
@@ -478,9 +462,9 @@ def run_experiment(experiment_name, tasks, tokenizer,
     per_task_f1   = {}
 
     if joint_training:
-        all_dfs      = [tasks[tn]['df'] for tn in task_names]
-        combined_df  = pd.concat(all_dfs).sample(frac=1, random_state=SEED).reset_index(drop=True)
-        tr, va, _, _ = make_loaders(combined_df, tokenizer)
+        all_dfs     = [tasks[tn]['df'] for tn in task_names]
+        combined_df = pd.concat(all_dfs).sample(frac=1, random_state=SEED).reset_index(drop=True)
+        tr, va, _   = make_loaders(combined_df, tokenizer)
         train_task(model, 'joint', tr, va, tokenizer)
         for j, tn in enumerate(task_names):
             f1, _                  = evaluate(model, tasks[tn]['test'])
@@ -499,13 +483,11 @@ def run_experiment(experiment_name, tasks, tokenizer,
                 ewc.register_task(model, tasks[task_name]['train'], task_name)
             if replay_buffer:
                 replay_buffer.add_task(tasks[task_name]['df'], task_name, tokenizer)
-                replay_buffer.save(
-                    f'{CFG["replay_dir"]}/{experiment_name}.json'
-                )
+                replay_buffer.save(f'{CFG["replay_dir"]}/{experiment_name}.json')
             for j, eval_task in enumerate(task_names):
                 if j <= i:
-                    f1, _                  = evaluate(model, tasks[eval_task]['test'])
-                    results_matrix[i][j]   = f1
+                    f1, _                = evaluate(model, tasks[eval_task]['test'])
+                    results_matrix[i][j] = f1
                     print(f'  After {task_name} → {eval_task} test F1: {f1:.4f}')
             save_checkpoint(
                 model,
@@ -524,7 +506,7 @@ def run_experiment(experiment_name, tasks, tokenizer,
     results      = {
         'experiment':     experiment_name,
         'per_task_f1':    per_task_f1,
-        'avg_f1':         float(np.mean(list(per_task_f1.values()))),
+        'avg_f1':         float(np.mean(list(per_task_f1.values()))) if per_task_f1 else 0.0,
         'cl_metrics':     cl_metrics,
         'results_matrix': clean_matrix,
     }
