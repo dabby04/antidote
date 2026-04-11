@@ -8,3 +8,6 @@ __pycache__/
 # Model checkpoints and large binaries
 results-baselines/checkpoints/
 *.pt
+
+# Experiment replay buffers
+results-ewc-only/replay_buffer/
