@@ -1,0 +1,26 @@
+{
+  "T1_LLMail": {
+    "n_total": 20000,
+    "n_positive": 9987,
+    "n_negative": 10013,
+    "avg_len": 944.6,
+    "max_len": 32171,
+    "file": "/kaggle/working/t1_llmail.parquet"
+  },
+  "T2_HackAPrompt": {
+    "n_total": 20000,
+    "n_positive": 9840,
+    "n_negative": 10160,
+    "avg_len": 186.9,
+    "max_len": 16014,
+    "file": "/kaggle/working/t2_hackaprompt.parquet"
+  },
+  "T3_BIPIA": {
+    "n_total": 20000,
+    "n_positive": 10000,
+    "n_negative": 10000,
+    "avg_len": 1566.0,
+    "max_len": 7126,
+    "file": "/kaggle/working/t3_bipia.parquet"
+  }
+}
