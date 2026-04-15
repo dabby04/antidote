@@ -5,9 +5,4 @@
 __pycache__/
 *.py[cod]
 
-# Model checkpoints and large binaries
-results-baselines/checkpoints/
-*.pt
-
-# Experiment replay buffers
-results-ewc-only/replay_buffer/
+*node_modules/
