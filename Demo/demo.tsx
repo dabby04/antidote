@@ -429,7 +429,7 @@ export default function App() {
                   {
                     icon: <Brain size={20} className="text-emerald-400" />,
                     title: 'Combined Framework',
-                    desc: 'EWC + Replay together address forgetting at both the parameter level and the data level - your Avg F1 rises from 0.58 to near the joint-training ceiling.',
+                    desc: 'EWC + Replay together address forgetting at both the parameter level and the data level.',
                   },
                 ].map((item, i) => (
                   <div key={i} className="flex gap-4 p-3.5 bg-white/20 rounded-2xl backdrop-blur-sm">
@@ -712,7 +712,7 @@ export default function App() {
               {[
                 { src: '/results/forgetting_curves.png', title: 'Forgetting Curves', desc: 'ANTIDOTE remains more stable across tasks compared to naive sequential fine-tuning.' },
                 { src: '/results/ablation_replay.png', title: 'Replay Ratio Ablation', desc: 'Replay budget affects retention; too little replay increases forgetting.' },
-                { src: '/results/ablation_lambda.png', title: 'EWC Lambda Ablation', desc: 'Regularization strength changes plasticity-stability balance in continual updates.' },
+                { src: '/results/ablation_lambda.png', title: 'EWC Lambda Ablation', desc: 'Regularisation strength changes plasticity-stability balance in continual updates.' },
                 { src: '/results/fewshot_benefit.png', title: 'Few-shot Benefit', desc: 'Even small support sets improve adaptation quality under distribution shifts.' },
               ].map((fig) => (
                 <figure key={fig.src} className="bg-white rounded-3xl border border-stone-200 p-4 shadow-sm">
@@ -734,7 +734,7 @@ export default function App() {
               <p className="text-[10px] font-black text-rose-200 uppercase tracking-widest mb-2">Key takeaways</p>
               <ul className="space-y-2 text-sm text-rose-50">
                 <li className="flex gap-2"><span className="font-black text-emerald-300">1.</span> Prompt-injection defense should be evaluated as a continual learning problem, not a one-shot benchmark.</li>
-                <li className="flex gap-2"><span className="font-black text-emerald-300">2.</span> Replay dramatically improves retention, while EWC regularizes updates to reduce destructive drift.</li>
+                <li className="flex gap-2"><span className="font-black text-emerald-300">2.</span> Replay dramatically improves retention, while EWC regularises updates to reduce destructive drift.</li>
                 <li className="flex gap-2"><span className="font-black text-emerald-300">3.</span> ANTIDOTE offers a strong retention-adaptation tradeoff and remains closer to the static-joint upper bound than naive sequential learning.</li>
               </ul>
             </section>
