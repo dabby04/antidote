@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Printable Name Card - ANTIDOTE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @page {
+            size: letter landscape;
+            margin: 0;
+        }
+
+        @media print {
+            body { background: white; padding: 0; margin: 0; }
+            .no-print { display: none; }
+            .page-break { page-break-before: always; }
+        }
+        .card-container {
+            width: 11in;
+            height: 8.5in;
+            padding: 0.5in;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .fold-line {
+            border-top: 1px dashed #d1d5db;
+            width: 100%;
+            position: relative;
+        }
+        .fold-line::after {
+            content: "FOLD HERE";
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            font-size: 8px;
+            color: #9ca3af;
+            background: white;
+            padding: 0 4px;
+        }
+        .tent-card {
+            width: 10in;
+            height: 7.5in;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+        }
+        .card-face {
+            height: 50%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+            position: relative;
+        }
+        .upside-down {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body class="bg-stone-100 font-sans">
+
+    <div class="no-print p-8 text-center bg-emerald-900 text-white shadow-lg">
+        <h1 class="text-2xl font-bold mb-2">Printable Table Tent Card</h1>
+        <p class="text-emerald-200">Print this page on <b>Letter (A4) paper</b>, then fold along the dashed line.</p>
+        <button onclick="window.print()" class="mt-4 bg-white text-emerald-900 px-6 py-2 rounded-full font-bold hover:bg-emerald-50 transition-all">
+            Print Now
+        </button>
+    </div>
+
+    <div class="card-container mx-auto">
+        <div class="tent-card bg-white shadow-2xl overflow-hidden">
+            
+            <!-- BACK FACE (Visible to you/Judge behind table) -->
+            <div class="card-face upside-down border-b border-stone-100 bg-stone-50">
+                <div class="text-center w-full px-8">
+                    <div class="flex items-center justify-center gap-2 mb-3">
+                        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                        <span class="text-[9px] font-black uppercase tracking-[0.2em] text-stone-400">Technical Brief</span>
+                        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-6 text-left">
+                        <div class="space-y-1">
+                            <p class="text-[8px] font-black text-emerald-700 uppercase">The Problem</p>
+                            <p class="text-[10px] text-stone-600 leading-tight">Prompt Injection & Catastrophic Forgetting: AI "overwrites" old security when learning new defenses.</p>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-[8px] font-black text-emerald-700 uppercase">The Solution</p>
+                            <p class="text-[10px] text-stone-600 leading-tight">Continual Learning via EWC: Anchoring vital safety weights to maintain long-term resilience.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FOLD LINE -->
+            <div class="fold-line"></div>
+
+            <!-- FRONT FACE (Visible to Public) -->
+            <div class="card-face relative bg-white">
+                <div class="absolute top-4 left-6 flex items-center gap-2">
+                    <div class="bg-emerald-600 p-1 rounded-lg text-white shadow-sm">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <span class="text-[9px] font-black tracking-widest text-stone-800 uppercase">ANTIDOTE</span>
+                </div>
+
+                <div class="text-center mb-4">
+                    <h2 class="text-4xl font-black text-stone-800 tracking-tighter mb-0.5 uppercase">
+                        Dabira Omotoso
+                    </h2>
+                    <p class="text-emerald-600 text-[8px] font-black uppercase tracking-[0.05em] max-w-[450px] mx-auto leading-tight">
+                        Adaptive Continual Learning For Detecting Evolving Prompt Injection Attacks
+                    </p>
+                </div>
+
+                <!-- Pitch Summary Section -->
+                <div class="grid grid-cols-3 gap-4 px-10 mt-2 border-t border-stone-100 pt-4">
+                    <div class="text-center">
+                        <p class="text-[7px] font-black text-emerald-700 uppercase tracking-widest mb-1.5">The Story</p>
+                        <p class="text-[9px] text-stone-500 leading-relaxed italic">AI is like a brilliant student easily tricked by a simple 'ignore your teacher' note.</p>
+                    </div>
+                    <div class="text-center border-x border-stone-100 px-3">
+                        <p class="text-[7px] font-black text-emerald-700 uppercase tracking-widest mb-1.5">The Idea</p>
+                        <p class="text-[9px] text-stone-800 font-bold leading-relaxed">ANTIDOTE is an "Immune System" for AI. It doesn't just block a list of bad words; it actually learns the patterns of attackers.</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-[7px] font-black text-emerald-700 uppercase tracking-widest mb-1.5">The Sale</p>
+                        <p class="text-[9px] text-stone-500 leading-relaxed">Using a "Memory Lock" (EWC) so AI learns to stop tomorrow's hackers without forgetting yesterday's.</p>
+                    </div>
+                </div>
+
+                <div class="absolute bottom-4 right-6 text-right">
+                    <!-- Date removed as requested -->
+                </div>
+            </div>
+
+        </div>
+
+        <div class="mt-6 no-print text-stone-400 text-xs text-center max-w-md">
+            Tip: Print on cardstock for a stand-alone tent. Replace <b>[YOUR NAME]</b> in the code before printing.
+        </div>
+    </div>
+
+</body>
+</html>

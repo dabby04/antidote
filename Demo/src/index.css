@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@page {
+  size: letter landscape;
+  margin: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* Minimal support for the custom animation class combos used in demo.tsx */
+@keyframes in-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes in-fade-right {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes in-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-in.fade-in.slide-in-from-bottom-8 {
+  animation: in-fade-up 0.7s ease-out both;
+}
+
+.animate-in.fade-in.slide-in-from-right-8 {
+  animation: in-fade-right 0.7s ease-out both;
+}
+
+.animate-in.fade-in.zoom-in {
+  animation: in-zoom 0.5s ease-out both;
+}
+
+/* Printable name card styles (used in name.tsx) */
+@media print {
+  body {
+    background: white;
+    padding: 0;
+    margin: 0;
+  }
+  .no-print {
+    display: none;
+  }
+  .page-break {
+    page-break-before: always;
+  }
+}
+
+.card-container {
+  width: 11in;
+  height: 8.5in;
+  padding: 0.5in;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.fold-line {
+  border-top: 1px dashed #d1d5db;
+  width: 100%;
+  position: relative;
+}
+
+.fold-line::after {
+  content: "FOLD HERE";
+  position: absolute;
+  top: -10px;
+  right: 10px;
+  font-size: 8px;
+  color: #9ca3af;
+  background: white;
+  padding: 0 4px;
+}
+
+.tent-card {
+  width: 10in;
+  height: 7.5in;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-face {
+  height: 50%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+  position: relative;
+}
+
+.upside-down {
+  transform: rotate(180deg);
+}
