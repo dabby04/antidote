@@ -183,13 +183,13 @@ The figures below are saved outputs from the analysis notebooks and are presente
 
 ![Forgetting Curves](figures/forgetting_curves.png)
 
-This plot shows how each method retains earlier tasks after moving through the task stream. A steep downward slope means the model is forgetting earlier attack types; a flatter curve means better continual-learning behavior.
+This plot shows how each method retains earlier tasks after moving through the task stream. A steep downward slope means the model is forgetting earlier attack types; a flatter curve means better continual-learning behaviour.
 
 ### EWC Lambda Ablation
 
 ![EWC Lambda Ablation](figures/ablation_lambda.png)
 
-This figure shows how sensitive the combined method is to the EWC penalty strength. The sweep highlights that the regularization weight matters: too little protection leaves forgetting untreated, while too much can block adaptation.
+This figure shows how sensitive the combined method is to the EWC penalty strength. The sweep highlights that the regularisation weight matters: too little protection leaves forgetting untreated, while too much can block adaptation.
 
 ### Replay Ratio Ablation
 
