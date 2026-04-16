@@ -209,10 +209,18 @@ function ForgettingCurve({ points, task }: { points: CurvePoint[]; task: string 
 
 // ── Main App ───────────────────────────────────────────────────────────────────
 export default function App() {
-  const [tab, setTab]           = useState<'intro' | 'demo' | 'glossary'>('intro');
+  const [tab, setTab]           = useState<'intro' | 'demo' | 'results' | 'glossary'>('intro');
   const [activeAttack, setActiveAttack] = useState(0);
   const [stage, setStage]       = useState<Stage>('after_t1');
   const [filterTask, setFilterTask] = useState<Task>('t1_llmail');
+
+  const benchmarkRows: Array<{ method: string; t1: number; t2: number; t3: number; avg: number; bwt: number | null }> = [
+    { method: 'Naive Sequential', t1: 0.300, t2: 0.544, t3: 0.885, avg: 0.576, bwt: -0.444 },
+    { method: 'EWC Only', t1: 0.359, t2: 0.702, t3: 0.885, avg: 0.649, bwt: -0.347 },
+    { method: 'Replay Only', t1: 0.964, t2: 0.737, t3: 0.880, avg: 0.860, bwt: -0.024 },
+    { method: 'ANTIDOTE (EWC + Replay)', t1: 0.909, t2: 0.732, t3: 0.882, avg: 0.841, bwt: -0.058 },
+    { method: 'Static Joint (Upper Bound)', t1: 0.990, t2: 0.794, t3: 0.883, avg: 0.889, bwt: null },
+  ];
 
   const [example,  setExample]  = useState<Example | null>(null);
   const [result,   setResult]   = useState<SimulateResponse | null>(null);
@@ -342,6 +350,7 @@ export default function App() {
             {([
               { id: 'intro',    label: 'The Problem',  icon: <AlertTriangle size={12} /> },
               { id: 'demo',     label: 'Live Demo',    icon: <Zap size={12} /> },
+              { id: 'results',  label: 'Results',      icon: <TrendingDown size={12} /> },
               { id: 'glossary', label: 'Key Concepts', icon: <BookOpen size={12} /> },
             ] as const).map(t => (
               <button
@@ -644,6 +653,91 @@ export default function App() {
                 ))}
               </ol>
             </div>
+          </div>
+        )}
+
+        {/* ── RESULTS TAB ───────────────────────────────────────────────────── */}
+        {tab === 'results' && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
+            <section className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
+              <div className="px-6 py-5 border-b border-stone-100 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-1">
+                    Main benchmark summary
+                  </p>
+                  <h2 className="text-xl font-black text-stone-900">Sequential task performance (F1 + forgetting)</h2>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-sm">
+                  <thead className="bg-stone-50">
+                    <tr className="text-left text-[11px] uppercase tracking-widest text-stone-500">
+                      <th className="px-5 py-3 font-black">Method</th>
+                      <th className="px-4 py-3 font-black">T1 F1</th>
+                      <th className="px-4 py-3 font-black">T2 F1</th>
+                      <th className="px-4 py-3 font-black">T3 F1</th>
+                      <th className="px-4 py-3 font-black">Avg F1</th>
+                      <th className="px-4 py-3 font-black">BWT</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {benchmarkRows.map((row, i) => {
+                      const isAntidote = row.method.includes('ANTIDOTE');
+                      return (
+                        <tr
+                          key={row.method}
+                          className="border-t border-stone-100"
+                          style={{ background: isAntidote ? 'rgba(16,185,129,0.08)' : i % 2 ? '#fff' : '#fffbeb' }}
+                        >
+                          <td className="px-5 py-3 font-black text-stone-900">{row.method}</td>
+                          <td className="px-4 py-3 font-mono text-stone-700">{row.t1.toFixed(3)}</td>
+                          <td className="px-4 py-3 font-mono text-stone-700">{row.t2.toFixed(3)}</td>
+                          <td className="px-4 py-3 font-mono text-stone-700">{row.t3.toFixed(3)}</td>
+                          <td className="px-4 py-3 font-mono font-black" style={{ color: isAntidote ? '#047857' : '#44403c' }}>
+                            {row.avg.toFixed(3)}
+                          </td>
+                          <td className="px-4 py-3 font-mono font-black" style={{ color: row.bwt === null ? '#78716c' : (row.bwt < 0 ? '#dc2626' : '#2563eb') }}>
+                            {row.bwt === null ? 'N/A' : row.bwt.toFixed(3)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="grid md:grid-cols-2 gap-6">
+              {[
+                { src: '/results/forgetting_curves.png', title: 'Forgetting Curves', desc: 'ANTIDOTE remains more stable across tasks compared to naive sequential fine-tuning.' },
+                { src: '/results/ablation_replay.png', title: 'Replay Ratio Ablation', desc: 'Replay budget affects retention; too little replay increases forgetting.' },
+                { src: '/results/ablation_lambda.png', title: 'EWC Lambda Ablation', desc: 'Regularization strength changes plasticity-stability balance in continual updates.' },
+                { src: '/results/fewshot_benefit.png', title: 'Few-shot Benefit', desc: 'Even small support sets improve adaptation quality under distribution shifts.' },
+              ].map((fig) => (
+                <figure key={fig.src} className="bg-white rounded-3xl border border-stone-200 p-4 shadow-sm">
+                  <img
+                    src={fig.src}
+                    alt={fig.title}
+                    className="w-full h-56 object-contain rounded-2xl bg-stone-50 border border-stone-100"
+                    loading="lazy"
+                  />
+                  <figcaption className="mt-3">
+                    <p className="text-sm font-black text-stone-800">{fig.title}</p>
+                    <p className="text-xs text-stone-500 leading-relaxed">{fig.desc}</p>
+                  </figcaption>
+                </figure>
+              ))}
+            </section>
+
+            <section className="bg-rose-600 rounded-3xl p-6 border border-rose-500 shadow-xl shadow-rose-200/50">
+              <p className="text-[10px] font-black text-rose-200 uppercase tracking-widest mb-2">Key takeaways</p>
+              <ul className="space-y-2 text-sm text-rose-50">
+                <li className="flex gap-2"><span className="font-black text-emerald-300">1.</span> Prompt-injection defense should be evaluated as a continual learning problem, not a one-shot benchmark.</li>
+                <li className="flex gap-2"><span className="font-black text-emerald-300">2.</span> Replay dramatically improves retention, while EWC regularizes updates to reduce destructive drift.</li>
+                <li className="flex gap-2"><span className="font-black text-emerald-300">3.</span> ANTIDOTE offers a strong retention-adaptation tradeoff and remains closer to the static-joint upper bound than naive sequential learning.</li>
+              </ul>
+            </section>
           </div>
         )}
 
