@@ -1,0 +1,38 @@
+# Ignore everything by default, then opt in only runtime assets.
+**
+
+# Required build files
+!Dockerfile
+!requirements.txt
+!utils.py
+
+# Backend entrypoint
+!Demo/
+Demo/**
+!Demo/server.py
+
+# Evaluation data used by /examples
+!pi-detection-data/
+pi-detection-data/**
+!pi-detection-data/t1_llmail.parquet
+!pi-detection-data/t2_hackaprompt.parquet
+!pi-detection-data/t3_bipia.parquet
+
+# Checkpoints used by stage-aware demo API
+!results/
+results/**
+!results/results-baselines/
+results/results-baselines/**
+!results/results-baselines/checkpoints/
+results/results-baselines/checkpoints/**
+!results/results-baselines/checkpoints/naive_sequential_after_T1_LLMail.pt
+!results/results-baselines/checkpoints/naive_sequential_after_T2_HackAPrompt.pt
+!results/results-baselines/checkpoints/naive_sequential_after_T3_BIPIA.pt
+
+!results/results-ewc+replay/
+results/results-ewc+replay/**
+!results/results-ewc+replay/checkpoints/
+results/results-ewc+replay/checkpoints/**
+!results/results-ewc+replay/checkpoints/ewc_plus_replay_after_T1_LLMail.pt
+!results/results-ewc+replay/checkpoints/ewc_plus_replay_after_T2_HackAPrompt.pt
+!results/results-ewc+replay/checkpoints/ewc_plus_replay_after_T3_BIPIA.pt
