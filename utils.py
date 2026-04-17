@@ -32,14 +32,10 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # -----------------------------------------------------------------------------
 # Config
-# FIX 1: lr dropped 2e-5 → 1e-5, eps raised to 1e-6, batch_size halved to 16
-# FIX 2: added adam_eps key for explicit control
 # -----------------------------------------------------------------------------
 CFG = {
     # Model
     # DeBERTa-v3-base works after the pooler init fix below.
-    # If you still get NaN after updating utils.py, switch to:
-    #   'distilbert-base-uncased'  (faster, more stable, slightly lower ceiling)
     'model_name': 'microsoft/deberta-v3-base',
     'max_len': 256,
     'num_labels': 2,
