@@ -140,12 +140,6 @@ They also regenerate the figures in `figures/`.
 
 The experiment supports three main conclusions.
 
-### Key Findings At A Glance
-
-- Naive sequential fine-tuning forgets severely (`Avg F1=0.5763`, `BWT=-0.4438`).
-- Replay is the strongest retention mechanism in this setup (`Avg F1=0.8599`, `BWT=-0.0238`).
-- ANTIDOTE (EWC + replay) delivers a good stability-plasticity tradeoff (`Avg F1=0.8408`, `BWT=-0.0584`) and is the method used in the live demo.
-
 ### 1. Naive sequential fine-tuning forgets badly
 
 The naive sequential model is the weakest setting overall. Its average F1 is 0.5763 and its backward transfer is -0.4438, which means it loses a large amount of prior-task performance as it adapts to new tasks. In particular, T1 drops from 0.9933 after the first task to 0.2998 after T3.
