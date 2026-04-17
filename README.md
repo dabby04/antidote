@@ -204,6 +204,8 @@ The improvement gap shows that ANTIDOTE gives the model a better initialization 
 
 The live demo is a small FastAPI-backed simulation that lets you compare the standard sequential model against ANTIDOTE at different training stages. It loads the saved checkpoints and serves stage-aware predictions so you can see forgetting unfold interactively.
 
+![Demo](figures/Demo.gif)
+
 ### Run The Demo Locally
 ___
 
