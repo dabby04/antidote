@@ -2,8 +2,8 @@
 
 Author : [Oluwadabira Omotoso](https://dabby04.github.io/professional-journey/)
 
-[![Paper](https://img.shields.io/badge/Paper-0f766e?style=for-the-badge&logo=read-the-docs&logoColor=white)](#paper)
-[![Video](https://img.shields.io/badge/Video-7c2d12?style=for-the-badge&logo=youtube&logoColor=white)](#video)
+[![Paper](https://img.shields.io/badge/Paper-0f766e?style=for-the-badge&logo=read-the-docs&logoColor=white)](ANTIDOTE.pdf)
+[![Video](https://img.shields.io/badge/Video-7c2d12?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/SraJc4EifuE)
 
 Large Language Models (LLMs) are increasingly deployed in real-world applications, making them attractive targets for prompt injection attacks, which OWASP currently ranks as the top security risk for LLM systems. Existing detection methods are fundamentally static, trained once on fixed datasets and unable to adapt as attack patterns evolve, leading to catastrophic forgetting when exposed to new attack distributions. This paper proposes ANTIDOTE, a continual learning framework for prompt injection detection that combines Elastic Weight Consolidation (EWC) and experience replay to enable a DeBERTa-v3-base classifier to adapt sequentially across evolving attack types without forgetting previously learned detection capability. We evaluate our framework across three sequential tasks derived from publicly available benchmarks, LLMail-Inject, HackAPrompt, and BIPIA, representing a progression from targeted structured attacks to stylistically diverse jailbreaks to contextually embedded indirect injections. EWC combined with experience replay achieves an average F1 of 0.8408 and a backward transfer of -0.0584, substantially outperforming naive sequential fine-tuning (0.5763, -0.4438) and approaching the static joint upper bound (0.8889). Few-shot zero-day evaluation further demonstrates that continual pretraining improves adaptation to unseen attack types by up to 15% over a from-scratch baseline.
 
