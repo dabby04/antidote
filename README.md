@@ -144,6 +144,12 @@ The experiment supports three main conclusions.
 
 The naive sequential model is the weakest setting overall. Its average F1 is 0.5763 and its backward transfer is -0.4438, which means it loses a large amount of prior-task performance as it adapts to new tasks. In particular, T1 drops from 0.9933 after the first task to 0.2998 after T3.
 
+#### Visual evidence: Forgetting Curves
+
+![Forgetting Curves](figures/forgetting_curves.png)
+
+This plot shows how each method retains earlier tasks after moving through the task stream. A steep downward slope means the model is forgetting earlier attack types; a flatter curve means better continual-learning behaviour.
+
 ### 2. Replay is the most reliable retention mechanism in this setup
 
 Replay-only achieves the strongest continual-learning average F1 at 0.8599, with a BWT of -0.0238. That is the most balanced tradeoff in the reported experiments: it keeps strong performance on the first task while remaining competitive on T2 and T3.
@@ -159,39 +165,19 @@ The combined EWC + replay method reaches 0.8408 average F1 with BWT -0.0584. It 
 - Replay ratios of 10% and 20% are both strong, with 20% giving the best average F1 in the replay sweep (`avg_f1=0.8453`, `BWT=-0.0310`).
 - Few-shot transfer improves when the model is pretrained with continual learning: 5-shot rises from 0.5172 to 0.5787, and 10-shot rises from 0.5842 to 0.6614.
 
-## Key Quantitative Summary
-
-| Method | LLMail | HackAPrompt | BIPIA | Avg F1 | BWT | Interpretation |
-|---|---:|---:|---:|---:|---:|---|
-| Static Joint | 0.9899 | 0.7938 | 0.8829 | 0.8889 | N/A | Upper-bound reference |
-| Naive Sequential | 0.2998 | 0.5437 | 0.8854 | 0.5763 | -0.4438 | Severe forgetting |
-| EWC only | 0.3594 | 0.7021 | 0.8847 | 0.6488 | -0.3468 | Partial mitigation |
-| Replay only | 0.9635 | 0.7365 | 0.8798 | 0.8599 | -0.0238 | Best continual-learning average F1 |
-| EWC + Replay | 0.9091 | 0.7318 | 0.8816 | 0.8408 | -0.0584 | ANTIDOTE method |
-
-### Figures (Visual Evidence For The Findings Above)
-
-The figures below are saved outputs from the analysis notebooks and are presented as direct visual evidence for the key findings reported above.
-
-### Forgetting Curves
-
-![Forgetting Curves](figures/forgetting_curves.png)
-
-This plot shows how each method retains earlier tasks after moving through the task stream. A steep downward slope means the model is forgetting earlier attack types; a flatter curve means better continual-learning behaviour.
-
-### EWC Lambda Ablation
+#### Visual evidence: EWC Lambda Ablation
 
 ![EWC Lambda Ablation](figures/ablation_lambda.png)
 
-This figure shows how sensitive the combined method is to the EWC penalty strength. The sweep highlights that the regularisation weight matters: too little protection leaves forgetting untreated, while too much can block adaptation.
+This figure shows how sensitive the combined method is to the EWC penalty strength. The sweep highlights that the regularisation weight matters: too little protection leaves forgetting untreated, while too much can block adaptation (stability-plasticity dilemma).
 
-### Replay Ratio Ablation
+#### Visual evidence: Replay Ratio Ablation
 
 ![Replay Ratio Ablation](figures/ablation_replay.png)
 
 This plot varies the fraction of replayed samples mixed back into later tasks. It shows the retention/adaptation tradeoff for replay, and why the mid-to-higher replay ratios perform best in this run.
 
-### Few-Shot Benefit
+#### Visual evidence: Few-Shot Benefit
 
 ![Few-Shot Benefit](figures/fewshot_benefit.png)
 
@@ -203,6 +189,16 @@ This figure compares two starting points under that constraint:
 - Adaptation after continual-learning pretraining with ANTIDOTE.
 
 The improvement gap shows that ANTIDOTE gives the model a better initialization for low-data transfer, so it reaches stronger detection performance with very limited supervision.
+
+## Key Quantitative Summary
+
+| Method | LLMail | HackAPrompt | BIPIA | Avg F1 | BWT | Interpretation |
+|---|---:|---:|---:|---:|---:|---|
+| Static Joint | 0.9899 | 0.7938 | 0.8829 | 0.8889 | N/A | Upper-bound reference |
+| Naive Sequential | 0.2998 | 0.5437 | 0.8854 | 0.5763 | -0.4438 | Severe forgetting |
+| EWC only | 0.3594 | 0.7021 | 0.8847 | 0.6488 | -0.3468 | Partial mitigation |
+| Replay only | 0.9635 | 0.7365 | 0.8798 | 0.8599 | -0.0238 | Best continual-learning average F1 |
+| EWC + Replay | 0.9091 | 0.7318 | 0.8816 | 0.8408 | -0.0584 | ANTIDOTE method |
 
 ## Reproducing the Demo
 
